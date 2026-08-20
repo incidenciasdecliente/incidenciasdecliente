@@ -1176,15 +1176,58 @@ td {
           </div>
           <div class="grid-2">
             <div class="field">
-              <label>OV (Orden de Venta) <span class="req">*</span></label>
-              <input type="text" id="ov" placeholder="Ej. 191820">
-              <div class="err" id="err-ov">Campo requerido.</div>
-            </div>
-            <div class="field">
               <label>Cliente <span class="req">*</span></label>
               <input type="text" id="cliente" placeholder="Nombre del cliente">
               <div class="err" id="err-cliente">Campo requerido.</div>
             </div>
+          </div>
+
+          <div class="field" style="margin-bottom:1rem">
+            <label>Tipo de carga <span class="req">*</span></label>
+            <div class="motivo-group" style="flex-wrap:wrap;">
+              <div class="motivo-opt">
+                <input type="radio" name="tipoCarga" id="cargaCompleto" value="COMPLETO" onchange="showErr('tipoCarga', false)">
+                <label for="cargaCompleto"><span class="dot"></span>Completo</label>
+              </div>
+              <div class="motivo-opt">
+                <input type="radio" name="tipoCarga" id="cargaVentanilla" value="VENTANILLA" onchange="showErr('tipoCarga', false)">
+                <label for="cargaVentanilla"><span class="dot"></span>Ventanilla</label>
+              </div>
+              <div class="motivo-opt">
+                <input type="radio" name="tipoCarga" id="cargaEcommerce" value="ECOMMERCE" onchange="showErr('tipoCarga', false)">
+                <label for="cargaEcommerce"><span class="dot"></span>Ecommerce</label>
+              </div>
+              <div class="motivo-opt">
+                <input type="radio" name="tipoCarga" id="cargaPaqueteria" value="PAQUETERIA" onchange="showErr('tipoCarga', false)">
+                <label for="cargaPaqueteria"><span class="dot"></span>Paquetería</label>
+              </div>
+            </div>
+            <div class="err" id="err-tipoCarga">Selecciona un tipo de carga.</div>
+          </div>
+
+          <div class="field" style="margin-bottom:1rem">
+            <label>Tipo de documento <span class="req">*</span></label>
+            <div class="motivo-group">
+              <div class="motivo-opt">
+                <input type="radio" name="tipoDocumento" id="docFactura" value="FACTURA" onchange="toggleFolioDoc()">
+                <label for="docFactura"><span class="dot"></span>Factura</label>
+              </div>
+              <div class="motivo-opt">
+                <input type="radio" name="tipoDocumento" id="docRemision" value="REMISION" onchange="toggleFolioDoc()">
+                <label for="docRemision"><span class="dot"></span>Remisión</label>
+              </div>
+              <div class="motivo-opt">
+                <input type="radio" name="tipoDocumento" id="docOV" value="OV" onchange="toggleFolioDoc()">
+                <label for="docOV"><span class="dot"></span>OV</label>
+              </div>
+            </div>
+            <div class="err" id="err-tipoDocumento">Selecciona un tipo de documento.</div>
+          </div>
+
+          <div class="field" id="folioDocWrap" style="display:none;margin-bottom:0">
+            <label>Folio documento <span class="req">*</span></label>
+            <input type="text" id="folioDocumento" placeholder="Ej. 191820, F-00123, R-00456">
+            <div class="err" id="err-folioDocumento">Campo requerido.</div>
           </div>
 
         </div>
@@ -1226,6 +1269,10 @@ td {
             <label>Nombre de quien registra <span class="req">*</span></label>
             <input type="text" id="registradoPor" placeholder="Nombre completo">
             <div class="err" id="err-registradoPor">Campo requerido.</div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Comentarios <span style="color:var(--muted);font-weight:400;font-size:0.65rem;text-transform:none;">(opcional)</span></label>
+            <textarea id="comentarios" rows="3" placeholder="Detalles adicionales del reclamo, contexto, observaciones..." style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'Barlow',sans-serif;font-size:0.9rem;padding:0.65rem 0.9rem;outline:none;resize:vertical;"></textarea>
           </div>
         </div>
       </div>
@@ -1741,9 +1788,11 @@ const MAX_PHOTOS = 10;
 // ── DRAFT AUTOSAVE ────────────────────────────────────────────
 const DRAFT_KEY = 'incidencias_draft';
 function saveDraft() {
-  const fields = ['unidad','almacen','ov','cliente','fechaCarga','fechaEntrega','fechaReporte','registradoPor','descripcion'];
+  const fields = ['unidad','almacen','cliente','folioDocumento','fechaCarga','fechaEntrega','fechaReporte','registradoPor','comentarios'];
   const draft = { ts: Date.now() };
   fields.forEach(f => { const el = document.getElementById(f); if(el) draft[f] = el.value; });
+  draft.tipoCarga = document.querySelector('input[name="tipoCarga"]:checked')?.value || '';
+  draft.tipoDocumento = document.querySelector('input[name="tipoDocumento"]:checked')?.value || '';
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
 function loadDraft() {
@@ -1751,9 +1800,19 @@ function loadDraft() {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY));
     if (!draft) return;
     if ((Date.now() - draft.ts) / 60000 > 120) { localStorage.removeItem(DRAFT_KEY); return; }
-    const fields = ['unidad','almacen','ov','cliente','fechaCarga','fechaEntrega','fechaReporte','registradoPor','descripcion'];
+    const fields = ['unidad','almacen','cliente','folioDocumento','fechaCarga','fechaEntrega','fechaReporte','registradoPor','comentarios'];
     let hasData = false;
     fields.forEach(f => { const el = document.getElementById(f); if(el && draft[f]) { el.value = draft[f]; hasData = true; } });
+    if (draft.tipoCarga) {
+      const cargaIdMap = { COMPLETO: 'cargaCompleto', VENTANILLA: 'cargaVentanilla', ECOMMERCE: 'cargaEcommerce', PAQUETERIA: 'cargaPaqueteria' };
+      const cargaRadio = document.getElementById(cargaIdMap[draft.tipoCarga]);
+      if (cargaRadio) { cargaRadio.checked = true; hasData = true; }
+    }
+    if (draft.tipoDocumento) {
+      const idMap = { FACTURA: 'docFactura', REMISION: 'docRemision', OV: 'docOV' };
+      const radio = document.getElementById(idMap[draft.tipoDocumento]);
+      if (radio) { radio.checked = true; toggleFolioDoc(); hasData = true; }
+    }
     if (hasData) { const b = document.getElementById('draftBanner'); if(b) b.style.display='flex'; }
   } catch(e) {}
 }
@@ -1832,6 +1891,19 @@ function currentPanel() {
   return 1;
 }
 
+// ── TIPO DE DOCUMENTO (FACTURA / REMISIÓN) ──────────────────────────────────
+function toggleFolioDoc() {
+  const checked = document.querySelector('input[name="tipoDocumento"]:checked');
+  const wrap = document.getElementById('folioDocWrap');
+  if (checked) {
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    document.getElementById('folioDocumento').value = '';
+  }
+  showErr('tipoDocumento', false);
+}
+
 // ── VALIDATION ────────────────────────────────────────────────────────────────
 function showErr(id, show) {
   const el = document.getElementById('err-' + id);
@@ -1841,10 +1913,24 @@ function showErr(id, show) {
 function validatePanel(panel) {
   if (panel === 1) {
     let ok = true;
-    ['unidad','almacen','ov','cliente','fechaCarga','fechaEntrega','fechaReporte','registradoPor'].forEach(id => {
+    ['unidad','almacen','cliente','fechaCarga','fechaEntrega','fechaReporte','registradoPor'].forEach(id => {
       const empty = !document.getElementById(id)?.value.trim();
       showErr(id, empty); if (empty) ok = false;
     });
+
+    const tipoCarga = document.querySelector('input[name="tipoCarga"]:checked');
+    showErr('tipoCarga', !tipoCarga);
+    if (!tipoCarga) ok = false;
+
+    const tipoDoc = document.querySelector('input[name="tipoDocumento"]:checked');
+    showErr('tipoDocumento', !tipoDoc);
+    if (!tipoDoc) ok = false;
+
+    if (tipoDoc) {
+      const folioDocEmpty = !document.getElementById('folioDocumento')?.value.trim();
+      showErr('folioDocumento', folioDocEmpty);
+      if (folioDocEmpty) ok = false;
+    }
 
     return ok;
   }
@@ -2015,15 +2101,19 @@ function compressPhoto(file, maxWidth=1280, quality=0.75) {
 function buildSummary() {
   const products = getProducts();
   const motivo = document.querySelector('input[name="motivo"]:checked')?.value || '';
+  const tipoCarga = document.querySelector('input[name="tipoCarga"]:checked')?.value || '';
+  const tipoDocumento = document.querySelector('input[name="tipoDocumento"]:checked')?.value || '';
   const rows = [
     ['Unidad',            document.getElementById('unidad').value],
     ['Almacén',           document.getElementById('almacen').value],
-    ['OV',                document.getElementById('ov').value],
     ['Cliente',           document.getElementById('cliente').value],
+    ['Tipo de carga',     tipoCarga],
+    ['Documento',         tipoDocumento ? `${tipoDocumento} — ${document.getElementById('folioDocumento').value}` : ''],
     ['Fecha carga',       document.getElementById('fechaCarga').value],
     ['Fecha entrega',     document.getElementById('fechaEntrega').value],
     ['Fecha reporte VTS', document.getElementById('fechaReporte').value],
     ['Registrado por',    document.getElementById('registradoPor').value],
+    ['Comentarios',       document.getElementById('comentarios').value],
     ['Productos',         products.map(p => `${p.marca} — ${p.sku} — ${p.motivo} (${p.piezas} pzas)`).join(' | ')],
     ['Fotos',             activePhotos().length > 0 ? `${activePhotos().length} foto(s)` : 'Sin fotos'],
   ];
@@ -2045,13 +2135,17 @@ async function submitForm() {
 
   const unidad       = document.getElementById('unidad').value;
   const almacen      = document.getElementById('almacen').value;
-  const ov           = document.getElementById('ov').value.trim();
   const cliente      = document.getElementById('cliente').value.trim();
+  const tipoCarga    = document.querySelector('input[name="tipoCarga"]:checked')?.value || '';
+  const tipoDocumento= document.querySelector('input[name="tipoDocumento"]:checked')?.value || '';
+  const folioDocumento = document.getElementById('folioDocumento').value.trim();
+  const ov           = folioDocumento; // Folio capturado (Factura/Remisión/OV) — mantiene compatibilidad con columna OV existente
   const fechaCarga   = document.getElementById('fechaCarga').value;
   const fechaEntrega = document.getElementById('fechaEntrega').value;
   const fechaReporte = document.getElementById('fechaReporte').value;
 
   const registradoPor= document.getElementById('registradoPor').value.trim();
+  const comentarios  = document.getElementById('comentarios').value.trim();
   const ts           = new Date().toLocaleString('es-MX');
 
   const d = new Date();
@@ -2060,9 +2154,9 @@ async function submitForm() {
 
   const products = getProducts();
   const rows = products.map(p => ({
-    unidad, almacen, ov, cliente,
+    unidad, almacen, ov, cliente, tipoCarga, tipoDocumento, folioDocumento,
     fechaCarga, fechaEntrega, fechaReporte,
-    motivo: p.motivo, registradoPor, timestamp: ts,
+    motivo: p.motivo, registradoPor, comentarios, timestamp: ts,
     marca: p.marca, sku: p.sku, descripcion: p.desc, piezas: p.piezas
   }));
 
@@ -2139,6 +2233,7 @@ function resetAll() {
   photos = []; productCount = 0;
   addProduct();
   goTo(1);
+  document.getElementById('folioDocWrap').style.display = 'none';
   document.getElementById('fechaReporte').value = new Date().toISOString().split('T')[0];
   document.getElementById('submitBtn').disabled = false;
   document.getElementById('submitBtn').innerHTML = '✔ Registrar incidencia';

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Incidencias — FORTE UNIVERSAL</title>
+<title>Sistema de Incidencias — </title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -1883,6 +1883,16 @@ function goTo(step) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Devuelve la fecha de HOY en hora local (no UTC) en formato YYYY-MM-DD.
+// new Date().toISOString() usa UTC y en México (UTC-6) se adelanta un día por la noche.
+function fechaLocalISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function currentPanel() {
   const panels = document.querySelectorAll('.panel');
   for (let i = 0; i < panels.length; i++) {
@@ -2139,7 +2149,6 @@ async function submitForm() {
   const tipoCarga    = document.querySelector('input[name="tipoCarga"]:checked')?.value || '';
   const tipoDocumento= document.querySelector('input[name="tipoDocumento"]:checked')?.value || '';
   const folioDocumento = document.getElementById('folioDocumento').value.trim();
-  const ov           = folioDocumento; // Folio capturado (Factura/Remisión/OV) — mantiene compatibilidad con columna OV existente
   const fechaCarga   = document.getElementById('fechaCarga').value;
   const fechaEntrega = document.getElementById('fechaEntrega').value;
   const fechaReporte = document.getElementById('fechaReporte').value;
@@ -2154,7 +2163,7 @@ async function submitForm() {
 
   const products = getProducts();
   const rows = products.map(p => ({
-    unidad, almacen, ov, cliente, tipoCarga, tipoDocumento, folioDocumento,
+    unidad, almacen, cliente, tipoCarga, tipoDocumento, folioDocumento,
     fechaCarga, fechaEntrega, fechaReporte,
     motivo: p.motivo, registradoPor, comentarios, timestamp: ts,
     marca: p.marca, sku: p.sku, descripcion: p.desc, piezas: p.piezas
@@ -2234,14 +2243,14 @@ function resetAll() {
   addProduct();
   goTo(1);
   document.getElementById('folioDocWrap').style.display = 'none';
-  document.getElementById('fechaReporte').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fechaReporte').value = fechaLocalISO();
   document.getElementById('submitBtn').disabled = false;
   document.getElementById('submitBtn').innerHTML = '✔ Registrar incidencia';
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.getElementById('btnAdd').addEventListener('click', addProduct);
-document.getElementById('fechaReporte').value = new Date().toISOString().split('T')[0];
+document.getElementById('fechaReporte').value = fechaLocalISO();
 addProduct();
 
 
